@@ -80,14 +80,24 @@ Later on in the script, we pass these restraints into SOMD2 configuration:
 somd2_config.restraints = [hard_restraints, soft_restraints]
 ```
 
-We also select appropriate lambda schedule for the transformation:
+The code will also select appropriate lambda schedule for the transformation:
 
 ```python
-somd2_config.lambda_schedule = "reverse_ring_break_morph"
+n_bonds_created = (changed_bonds_df["k0"] == 0).sum()
+n_bonds_annihilated = (changed_bonds_df["k1"] == 0).sum()
+
+if n_bonds_created == 1:
+    somd2_config.lambda_schedule = "reverse_ring_break_morph"
+elif n_bonds_annihilated == 1:
+    somd2_config.lambda_schedule = "ring_break_morph"
+else:
+    raise ValueError(
+        "The perturbation does not involve a single bond being created or annihilated."
+    )
 ```
 
 > [!Caution]
-> Since we are doing a transformation that involves an alchemical creation of the bond (Leu-to-Pro mutation), we use the predefined `reverse_ring_break_morph` here. If we were doing a transformation which involved a bond annihilation (Pro-to-Leu mutation), we would be using the `ring_break_morph` instead. The Morse force setup remains identical regardless of which lambda schedule is used. If you use an incorrect lambda schedule for the type of the transformation that you're doing the code will perform a validation check and throw an error to stop from an incorrect setup from running.
+> Since we are doing a transformation that involves an alchemical creation of the bond (Leu-to-Pro mutation), we use the predefined `reverse_ring_break_morph` here. If we were doing a transformation which involved a bond annihilation (Pro-to-Leu mutation), we would be using the `ring_break_morph` instead. The Morse force setup remains identical regardless of which lambda schedule is used. The code will perform automatic detection in the script for you, but if you choose not to use it and overwrite it, SOMD2 will not stop from an incorrect setup from running.
 
 For the `morse_soft` `k` and `de` parameters, we use default values of `125 kcal mol-1 A-2` and `50 kcal mol-1` respectively, as these values have been found to work well for a broad range of bond transformations.
 

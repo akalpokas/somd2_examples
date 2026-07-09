@@ -59,7 +59,24 @@ def main():
 
     sire_system = sr.stream.load(f"OMTKY3-L18P.bss")
 
-    somd2_config.lambda_schedule = "reverse_ring_break_morph"
+    # Automatically determine the lambda schedule based on the bond breaking and forming process
+    mol = sire_system.molecules("molecule property is_perturbable")
+    ref_mol = sr.morph.link_to_reference(mol)
+    perturbable_mol = ref_mol[0]
+    pert = perturbable_mol.perturbation()
+    pert_omm = pert.to_openmm()
+    changed_bonds_df = pert_omm.changed_bonds(to_pandas=True)
+    n_bonds_created = (changed_bonds_df["k0"] == 0).sum()
+    n_bonds_annihilated = (changed_bonds_df["k1"] == 0).sum()
+
+    if n_bonds_created == 1:
+        somd2_config.lambda_schedule = "reverse_ring_break_morph"
+    elif n_bonds_annihilated == 1:
+        somd2_config.lambda_schedule = "ring_break_morph"
+    else:
+        raise ValueError(
+            "The perturbation does not involve a single bond being created or annihilated."
+        )
 
     hard_restraints, sire_system = sr.restraints.morse_potential(
         sire_system,
